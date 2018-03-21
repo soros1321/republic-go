@@ -26,8 +26,8 @@ const red = "\x1b[31;1m"
 
 type OrderBook struct {
 	LastUpdateId int        `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	Bids         [][]interface{} `json:"bids"`
+	Asks         [][]interface{} `json:"asks"`
 }
 
 func main() {
@@ -73,13 +73,13 @@ func main() {
 		// Generate order from the Binance data
 		sellOrders := make([]*order.Order, len(orderBook.Asks))
 		for i, j := range orderBook.Asks {
-			price, err := strconv.ParseFloat(j[0], 10)
+			price, err := strconv.ParseFloat(j[0].(string), 10)
 			price = price * 1000000000000
 			if err != nil {
 				log.Fatal("fail to parse the price into a big int")
 			}
 
-			amount, err := strconv.ParseFloat(j[1], 10)
+			amount, err := strconv.ParseFloat(j[1].(string), 10)
 			amount = amount * 1000000000000
 			if err != nil {
 				log.Fatal("fail to parse the amount into a big int")
@@ -93,13 +93,13 @@ func main() {
 		buyOrders := make([]*order.Order, len(orderBook.Bids))
 		//test cast for match
 		for i, j := range orderBook.Asks { //change asks/bids
-			price, err := strconv.ParseFloat(j[0], 10)
+			price, err := strconv.ParseFloat(j[0].(string), 10)
 			price = price * 1000000000000
 			if err != nil {
 				log.Fatal("fail to parse the price into a big int")
 			}
 
-			amount, err := strconv.ParseFloat(j[1], 10)
+			amount, err := strconv.ParseFloat(j[1].(string), 10)
 			amount = amount * 1000000000000
 			if err != nil {
 				log.Fatal("fail to parse the amount into a big int")
@@ -158,11 +158,12 @@ func getNodesDetails() []string {
 
 	// susruth's test nodes
 	return []string{
-		"/ip4/52.21.44.236/tcp/18514/republic/8MGg76n7RfC6tuw23PYf85VFyM8Zto",
-		"/ip4/52.41.118.171/tcp/18514/republic/8MJ38m8Nzknh3gVj7QiMjuejmHBMSf",
-		"/ip4/52.59.176.141/tcp/18514/republic/8MKDGUTgKtkymyKTH28xeMxiCnJ9xy",
-		"/ip4/52.77.88.84/tcp/18514/republic/8MHarRJdvWd7SsTJE8vRVfj2jb5cWS",
-		"/ip4/52.79.194.108/tcp/18514/republic/8MKZ8JwCU9m9affPWHZ9rxp2azXNnE",
+		"/ip4/52.77.88.84/tcp/18514/republic/8MGzXN7M1ucxvtumVjQ7Ybb7xQ8TUw",
+		//"/ip4/52.59.176.141/tcp/18514/republic/8MHmrykz65HimBPYaVgm8bTSpRUoXA",
+		//"/ip4/52.21.44.236/tcp/18514/republic/8MKFT9CDQQru1hYqnaojXqCQU2Mmuk",
+		//"/ip4/52.41.118.171/tcp/18514/republic/8MGb8k337pp2GSh6yG8iv2GK6FbNHN",
+		"/ip4/52.79.194.108/tcp/18514/republic/8MGBUdoFFd8VsfAG5bQSAptyjKuutE",
+		"/ip4/13.250.34.9/tcp/18514/republic/8MH9hcbekxW8yUo9ADBhA213PnZ4do",
 	}
 
 	// Local nodes
