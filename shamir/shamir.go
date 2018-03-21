@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"math/big"
 
 	"github.com/republicprotocol/republic-go/stackint"
 )
@@ -20,19 +19,11 @@ type Share struct {
 // Shares are a slice of Share structs.
 type Shares []Share
 
-func ShouldEqual(bg *big.Int, si stackint.Int1024) {
-	// if bg.String() != si.String() {
-	// 	fmt.Println(bg.String())
-	// 	fmt.Println(si.String())
-	// 	panic("!!!")
-	// }
-}
-
 // Split a secret into Shares. N represents the number of Shares that the
 // secret will be split into, and K represents the number of Share required to
 // reconstruct the secret. Prime is used to define the finite field from which
 // secrets can be selected. A slice of Shares, or an error, is returned.
-func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBig *big.Int) (Shares, error) {
+func Split(n int64, k int64, prime, secret *stackint.Int1024) (Shares, error) {
 	// Validate the encoding by checking that N is greater than K, and that the
 	// secret is within the finite field.
 	if n < k {
@@ -42,52 +33,37 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		return nil, NewFiniteFieldError(secret)
 	}
 
-	// ShouldEqual(secretBig, *secret)
-	// ShouldEqual(primeBig, *prime)
+	mont := stackint.PrimeM
 
 	// Generate K polynomial coefficients, where the first coefficient is the
 	// secret.
 	one := stackint.One()
 	max := prime.Sub(&one)
-	coefficients := make([]*stackint.Int1024, k)
-	coefficients[0] = secret
-
-	// maxBig := big.NewInt(0).Sub(primeBig, big.NewInt(1))
-	// coefficientsBig := make([]*big.Int, k)
-	// coefficientsBig[0] = secretBig
+	coefficients := make([]*stackint.MontInt, k)
+	secretM := mont.ToMont(secret)
+	coefficients[0] = &secretM
 
 	for i := int64(1); i < k; i++ {
 		coefficient, err := stackint.Random(rand.Reader, &max)
 		if err != nil {
 			return nil, err
 		}
-		coefficients[i] = &coefficient
-
-		// coefficientBig := big.NewInt(0).SetBytes(coefficient.ToBytes())
-		// coefficientsBig[i] = coefficientBig
-		// fmt.Println(coefficientBig)
-
+		coefficentM := mont.ToMont(&coefficient)
+		coefficients[i] = &coefficentM
 	}
-
-	// Setup big numbers so that we do not have to keep recreating them in each
-	// loop.
-	// accumBig := big.NewInt(0)
-	// coBig := big.NewInt(0)
-	// baseBig := big.NewInt(0)
-	// expBig := big.NewInt(0)
-	// expModBig := big.NewInt(0)
 
 	// Create N shares.
 	shares := make(Shares, n)
 	for x := int64(1); x <= n; x++ {
 
 		// accum := coefficients[0]
-		accum := (*coefficients[0]).Clone()
+		accumM := (*coefficients[0]).MontClone()
 		// base := x
 		base := stackint.FromUint64(uint64(x))
+		baseM := mont.ToMont(&base)
 		// expMod := base % prime
-		exp := base.Clone()
-		expMod := exp.Mod(prime)
+		expM := baseM.MontClone()
+		// expMod := exp.Mod(prime)
 
 		// accumBig.Set(coefficientsBig[0])
 		// baseBig.SetInt64(x)
@@ -104,25 +80,17 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 			// ShouldEqual(accumBig, accum)
 
 			// co := (coefficients * expoMod) % prime
-			coefficient := coefficients[j].Clone()
-			co := coefficient.MulModulo(&expMod, prime)
-			// coBig.Set(coefficientsBig[j])
-			// coBig.Mul(coBig, expModBig)
-			// coBig.Mod(coBig, primeBig)
-
-			// ShouldEqual(coBig, co)
+			coefficient := coefficients[j].MontClone()
+			coM := coefficient.MontMul(&expM)
 
 			// accum = (accum + co) % prime
-			accum = accum.AddModulo(&co, prime)
-			// accumBig.Add(accumBig, coBig)
-			// accumBig.Mod(accumBig, primeBig)
+			accumM = accumM.MontAdd(&coM)
 
-			// ShouldEqual(accumBig, accum)
-
+			expM = expM.MontMul(&baseM)
 			// expMod = (expMod * base ) % prime
-			exp = exp.Mul(&base)
+			// exp = exp.Mul(&base)
 			// expBig.Mul(expBig, baseBig)
-			expMod = exp.Mod(prime)
+			// expMod = exp.Mod(prime)
 			// expModBig.Mod(expBig, primeBig)
 
 			// ShouldEqual(accumBig, accum)
@@ -130,7 +98,7 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 		// ShouldEqual(accumBig, accum)
 		shares[x-1] = Share{
 			Key:   x,
-			Value: accum,
+			Value: accumM.ToInt1024(),
 			// ValueBig: big.NewInt(0).Set(accumBig),
 		}
 	}
@@ -141,7 +109,6 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024, primeBig, secretBi
 // which the secret was selected. The reconstructed secret, or an error, is
 // returned.
 func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stackint.Int1024 /*big.Int*/ {
-	secret := stackint.Zero()
 	// secretBig := big.NewInt(0)
 
 	// Setup big numbers so that we do not have to keep recreating them in each
@@ -154,10 +121,16 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 	// nextNegBig := big.NewInt(0)
 	// nextDiffBig := big.NewInt(0)
 
+	mont := stackint.PrimeM
+
+	secret := mont.FromUint64(0)
+
+	primeM := mont.ToMont(prime)
+
 	// Compute the Lagrange basic polynomial interpolation.
 	for i := 0; i < len(shares); i++ {
-		num := stackint.One()
-		den := stackint.One()
+		num := stackint.OneC
+		den := stackint.OneC
 
 		// numBig.SetInt64(1)
 		// denBig.SetInt64(1)
@@ -168,11 +141,11 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 			}
 			// startposition = shares[formula][0];
 			// startBig.SetInt64(int64(shares[i].Key))
-			start := stackint.FromUint64(uint64(shares[i].Key))
+			start := mont.FromUint64(uint64(shares[i].Key))
 
 			// nextposition = shares[count][0];
 			// nextBig.SetInt64(int64(shares[j].Key))
-			next := stackint.FromUint64(uint64(shares[j].Key))
+			next := mont.FromUint64(uint64(shares[j].Key))
 
 			// numerator = (numerator * -nextposition) % prime;
 			// nextNegBig.SetInt64(0)
@@ -180,8 +153,8 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 			// numBig.Mul(numBig, nextNegBig)
 			// numBig.Mod(numBig, primeBig)
 
-			nextGen := num.MulModulo(&next, prime)
-			num = prime.Sub(&nextGen)
+			nextGen := num.MontMul(&next)
+			num = primeM.MontSub(&nextGen)
 
 			// denominator = (denominator * (startposition - nextposition)) % prime;
 			// nextDiffBig.Sub(startBig, nextBig)
@@ -189,8 +162,8 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 			// denBig.Mod(denBig, primeBig)
 
 			// oldDen := den
-			nextDiff := start.SubModulo(&next, prime)
-			den = den.MulModulo(&nextDiff, prime)
+			nextDiff := start.MontSub(&next)
+			den = den.MontMul(&nextDiff)
 
 			// if denBig.String() != den.String() {
 			// 	fmt.Println("!!!")
@@ -215,13 +188,18 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 		// secretBig.Add(secretBig, valueBig)
 		// secretBig.Mod(secretBig, primeBig)
 
-		den = den.ModInverse(prime)
-		value := shares[i].Value.MulModulo(&num, prime)
-		value = value.MulModulo(&den, prime)
-		secret = secret.AddModulo(&value, prime)
+		den = den.MontInv()
+		value := mont.ToMont(&shares[i].Value)
+		value = value.MontMul(&num)
+		value = value.MontMul(&den)
+		// value := shares[i].Value.MulModulo(&num, prime)
+		// value = value.MulModulo(&den, prime)
+		secret = secret.MontAdd(&value)
+		// secret = secret.AddModulo(&value, prime)
 	}
 
-	return &secret //, secretBig
+	secretInt := secret.ToInt1024()
+	return &secretInt //, secretBig
 }
 
 // ToBytes encodes the Share into a slice of bytes.
