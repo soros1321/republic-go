@@ -61,7 +61,7 @@ func RegisterAll(secretFile string, configs []*node.Config) {
 		var decimalMultiplier = big.NewInt(1000000000000000000)
 		var bondTokenCount = big.NewInt(0)
 		var bond = decimalMultiplier.Mul(decimalMultiplier, bondTokenCount)
-		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", "ropsten")
+		clientDetails, err := connection.FromURI("https://ropsten.infura.io/", configs[i].GatewayAddress)
 		if err != nil {
 			// TODO: Handler err
 			panic(err)
