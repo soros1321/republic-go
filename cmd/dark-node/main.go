@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/contracts/connection"
 	"github.com/republicprotocol/republic-go/contracts/dnr"
 	"github.com/republicprotocol/republic-go/dark-node"
@@ -31,7 +32,7 @@ func main() {
 	}
 
 	// Create a dark node registrar.
-	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey, config.EthereumRPC)
+	darkNodeRegistrar, err := CreateDarkNodeRegistrar(config.EthereumKey, config.EthereumRPC, config.GatewayAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -103,9 +104,10 @@ func LoadConfig(filename string) (*node.Config, error) {
 	return config, nil
 }
 
-func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string) (dnr.DarkNodeRegistrar, error) {
+// CreateDarkNodeRegistrar creates a Dark Node Registrar instance
+func CreateDarkNodeRegistrar(ethereumKey keystore.Key, ethereumRPC string, gatewayAddress common.Address) (dnr.DarkNodeRegistrar, error) {
 	auth := bind.NewKeyedTransactor(ethereumKey.PrivateKey)
-	client, err := connection.FromURI(ethereumRPC, connection.ChainRopsten)
+	client, err := connection.FromURI(ethereumRPC, gatewayAddress)
 	if err != nil {
 		return nil, err
 	}
