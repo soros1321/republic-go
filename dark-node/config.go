@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/network"
@@ -19,9 +20,10 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	KeyPair     identity.KeyPair `json:"keyPair"`
-	EthereumKey keystore.Key     `json:"ethereumKey"`
-	EthereumRPC string           `json:"ethereumRPC"`
+	KeyPair        identity.KeyPair `json:"keyPair"`
+	EthereumKey    keystore.Key     `json:"ethereumKey"`
+	EthereumRPC    string           `json:"ethereumRPC"`
+	GatewayAddress common.Address   `json:"gatewayAddress"`
 }
 
 // LoadConfig loads a Config object from the given filename. Returns the Config
