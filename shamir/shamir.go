@@ -59,8 +59,8 @@ func Split(n int64, k int64, prime, secret *stackint.Int1024) (Shares, error) {
 		// accum := coefficients[0]
 		accumM := (*coefficients[0]).MontClone()
 		// base := x
-		base := stackint.FromUint64(uint64(x))
-		baseM := mont.ToMont(&base)
+		// base := stackint.FromUint64(uint64(x))
+		baseM := mont.FromUint64(uint64(x))
 		// expMod := base % prime
 		expM := baseM.MontClone()
 		// expMod := exp.Mod(prime)
@@ -125,7 +125,7 @@ func Join(prime *stackint.Int1024 /*, primeBig *big.Int */, shares Shares) *stac
 
 	secret := mont.FromUint64(0)
 
-	primeM := mont.ToMont(prime)
+	primeM := mont.M
 
 	// Compute the Lagrange basic polynomial interpolation.
 	for i := 0; i < len(shares); i++ {
