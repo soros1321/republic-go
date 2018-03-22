@@ -28,43 +28,24 @@ type Client interface {
 	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
-type Chain string
-
-const (
-	ChainMainnet Chain = "mainnet"
-	ChainRopsten Chain = "ropsten"
-)
-
 // ClientDetails contains the simulated client and the contracts deployed to it
 type ClientDetails struct {
-	Client     Client
-	RenAddress common.Address
-	DNRAddress common.Address
+	Client         Client
+	GatewayAddress common.Address
 }
 
 // FromURI will connect to a provided RPC uri
-func FromURI(uri string, chain Chain) (ClientDetails, error) {
-	if uri == "" && chain == ChainMainnet {
-		uri = "https://mainnet.infura.io/"
-	} else {
-		uri = "https://ropsten.infura.io/"
-	}
+func FromURI(uri string, GatewayAddress common.Address) (ClientDetails, error) {
 
 	client, err := ethclient.Dial(uri)
 	if err != nil {
 		return ClientDetails{}, err
 	}
 
-	if chain == ChainMainnet {
-		panic("unimplemented")
-	} else {
-		return ClientDetails{
-			Client:     client,
-			RenAddress: common.HexToAddress("0xe518555710bbf765cadf0aad26d41407031677de"),
-			DNRAddress: common.HexToAddress("0xf178237e7d1131b7924435aa8d02B8Ab4d308AFf"),
-		}, nil
-	}
-
+	return ClientDetails{
+		Client:         client,
+		GatewayAddress: GatewayAddress,
+	}, nil
 }
 
 // PatchedWaitMined waits for tx to be mined on the blockchain.
