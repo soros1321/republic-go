@@ -11,7 +11,7 @@ import (
 // go build -a -gcflags='-m -m' int1024.go int1024_arithmetic.go int1024_bitwise.go int1024_comparison.go int1024_internal.go
 
 // SIZE is the number of bits stored by Int1024
-const SIZE = 2048
+const SIZE = 1024
 
 // WORDSIZE is 64 for Word
 const WORDSIZE = 64
@@ -356,6 +356,17 @@ func min(a, b uint16) uint16 {
 		return a
 	}
 	return b
+}
+
+func (x *Int1024) setLength() {
+	var firstPositive uint16
+	for i := INT1024WORDS - 1; i > 0; i-- {
+		if x.words[i] != 0 {
+			firstPositive = uint16(i)
+			break
+		}
+	}
+	x.length = firstPositive + 1
 }
 
 // func (x *Int1024) Verify() {
